@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   FlatList, ActivityIndicator, I18nManager, SafeAreaView,
-  ScrollView, KeyboardAvoidingView, Platform,
+  ScrollView, KeyboardAvoidingView, Platform, Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { API_URL } from './config';
@@ -97,6 +97,7 @@ function SessionsScreen({ userId }) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selected, setSelected] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -118,14 +119,33 @@ function SessionsScreen({ userId }) {
         onRefresh={load}
         refreshing={loading}
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <TouchableOpacity style={styles.card} onPress={() => setSelected(item)}>
             <Text style={styles.cardDate}>{item.date}</Text>
             <Text style={styles.cardStats}>{item.shots} מכות · {item.stats?.in_pct ?? '—'}% IN</Text>
             {!!item.note?.opponent && <Text style={styles.cardOpp}>נגד: {item.note.opponent}</Text>}
-          </View>
+          </TouchableOpacity>
         )}
         ListEmptyComponent={!loading && <Text style={styles.empty}>אין עדיין אימונים, ייבא קובץ מהאתר</Text>}
       />
+      <Modal visible={!!selected} animationType="slide" transparent onRequestClose={() => setSelected(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.screenTitle}>{selected?.date}</Text>
+            <ScrollView style={{ maxHeight: 360 }}>
+              <Text style={styles.cardStats}>סך מכות: {selected?.shots ?? '—'}</Text>
+              <Text style={styles.cardStats}>ראלים: {selected?.rallies ?? '—'}</Text>
+              {selected?.stats && Object.entries(selected.stats).map(([k, v]) => (
+                <Text key={k} style={styles.cardOpp}>{k}: {String(v)}</Text>
+              ))}
+              {!!selected?.note?.opponent && <Text style={styles.cardOpp}>נגד: {selected.note.opponent}</Text>}
+              {!!selected?.note?.score && <Text style={styles.cardOpp}>תוצאה: {selected.note.score}</Text>}
+            </ScrollView>
+            <TouchableOpacity style={styles.button} onPress={() => setSelected(null)}>
+              <Text style={styles.buttonText}>סגור</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -260,4 +280,6 @@ const styles = StyleSheet.create({
   sportBtnActive: { backgroundColor: '#BBFD00', borderColor: '#BBFD00' },
   sportBtnText: { color: '#888', fontWeight: '700' },
   sportBtnTextActive: { color: '#111' },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#1e1e1e', borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 18, paddingBottom: 30 },
 });
