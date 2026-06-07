@@ -8,6 +8,7 @@ Design rules baked in from the start:
 """
 from __future__ import annotations
 import tempfile, os
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -175,6 +176,45 @@ def chat(uid: str, body: ChatIn,
     reply = "".join(claude_client.chat(body.messages, player_summary, ntrp_cur, ntrp_next))
     db.save_chat(body.messages + [{"role": "assistant", "content": reply}], user_id=uid)
     return {"reply": reply}
+
+
+# ── Saved chat conversations (leave + keep aside, like chat history) ─────────
+import json as _json
+
+
+@app.get("/users/{uid}/conversations")
+def list_conversations(uid: str):
+    rows = db.get_history(category="chat", limit=50, user_id=uid)
+    return [{"id": r["id"], "title": r["title"], "date": r["date"]} for r in rows]
+
+
+class ConversationIn(BaseModel):
+    title: Optional[str] = None
+    messages: list[dict]
+
+
+@app.post("/users/{uid}/conversations")
+def save_conversation(uid: str, body: ConversationIn):
+    if not body.messages:
+        raise HTTPException(400, "no messages")
+    title = (body.title or "").strip() or datetime.now().strftime("%Y-%m-%d %H:%M")
+    db.save_history("chat", title, "", _json.dumps(body.messages, ensure_ascii=False), user_id=uid)
+    return {"ok": True, "title": title}
+
+
+@app.get("/users/{uid}/conversations/{conv_id}")
+def get_conversation(uid: str, conv_id: int):
+    rows = db.get_history(category="chat", limit=200, user_id=uid)
+    for r in rows:
+        if r["id"] == conv_id:
+            return {"id": r["id"], "title": r["title"], "messages": _json.loads(r["messages_json"] or "[]")}
+    raise HTTPException(404, "not found")
+
+
+@app.delete("/users/{uid}/conversations/{conv_id}")
+def delete_conversation(uid: str, conv_id: int):
+    db.delete_history(conv_id, user_id=uid)
+    return {"ok": True}
 
 
 @app.get("/healthz")
