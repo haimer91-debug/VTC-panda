@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+.env
+*.db
+*.bak_*
+api_key.txt
+swingvision_creds.txt
+telegram_token.txt
+logs/
+*.log
+_archive/
