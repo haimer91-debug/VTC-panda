@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { API_URL } from './config';
+import { t, LANGS } from './i18n';
 
 I18nManager.allowRTL(true);
 
@@ -25,6 +26,8 @@ export default function App() {
   const [tab, setTab] = useState('sessions');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [lang, setLang] = useState('he');
+  const cycleLang = () => setLang((l) => LANGS[(LANGS.indexOf(l) + 1) % LANGS.length]);
 
   const login = async () => {
     if (!username.trim()) return;
@@ -35,7 +38,7 @@ export default function App() {
       });
       setUserId(data.user_id);
     } catch {
-      setError('שגיאת התחברות, בדוק חיבור לאינטרנט');
+      setError(t(lang, 'loginError'));
     } finally { setLoading(false); }
   };
 
@@ -45,15 +48,18 @@ export default function App() {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar style="light" />
+        <TouchableOpacity onPress={cycleLang} style={styles.langBtn}>
+          <Text style={styles.langBtnText}>{lang.toUpperCase()}</Text>
+        </TouchableOpacity>
         <Text style={styles.logo}>🎾</Text>
-        <Text style={styles.title}>Virtual Tennis Coach</Text>
-        <Text style={styles.subtitle}>הזן שם משתמש כדי להמשיך</Text>
+        <Text style={styles.title}>{t(lang, 'appName')}</Text>
+        <Text style={styles.subtitle}>{t(lang, 'loginPrompt')}</Text>
         <TextInput
-          style={styles.input} placeholder="שם משתמש" placeholderTextColor="#888"
+          style={styles.input} placeholder={t(lang, 'username')} placeholderTextColor="#888"
           value={username} onChangeText={setUsername} autoCapitalize="none"
         />
         <TouchableOpacity style={styles.button} onPress={login} disabled={loading}>
-          {loading ? <ActivityIndicator color="#111" /> : <Text style={styles.buttonText}>כניסה</Text>}
+          {loading ? <ActivityIndicator color="#111" /> : <Text style={styles.buttonText}>{t(lang, 'login')}</Text>}
         </TouchableOpacity>
         {!!error && <Text style={styles.error}>{error}</Text>}
       </SafeAreaView>
@@ -64,20 +70,23 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
       <View style={styles.topBar}>
-        <TouchableOpacity onPress={logout}><Text style={styles.logout}>יציאה</Text></TouchableOpacity>
+        <TouchableOpacity onPress={logout}><Text style={styles.logout}>{t(lang, 'logout')}</Text></TouchableOpacity>
         <Text style={styles.topTitle}>🎾 {userId}</Text>
+        <TouchableOpacity onPress={cycleLang} style={styles.langBtnSmall}>
+          <Text style={styles.langBtnText}>{lang.toUpperCase()}</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={{ flex: 1 }}>
-        {tab === 'sessions' && <SessionsScreen userId={userId} />}
-        {tab === 'chat'     && <ChatScreen userId={userId} />}
-        {tab === 'profile'  && <ProfileScreen userId={userId} />}
+        {tab === 'sessions' && <SessionsScreen userId={userId} lang={lang} />}
+        {tab === 'chat'     && <ChatScreen userId={userId} lang={lang} />}
+        {tab === 'profile'  && <ProfileScreen userId={userId} lang={lang} />}
       </View>
 
       <View style={styles.tabBar}>
-        <TabBtn active={tab === 'profile'}  label="פרופיל" icon="⚙️" onPress={() => setTab('profile')} />
-        <TabBtn active={tab === 'chat'}     label="מאמן"   icon="💬" onPress={() => setTab('chat')} />
-        <TabBtn active={tab === 'sessions'} label="אימונים" icon="🎬" onPress={() => setTab('sessions')} />
+        <TabBtn active={tab === 'profile'}  label={t(lang, 'tabProfile')}  icon="⚙️" onPress={() => setTab('profile')} />
+        <TabBtn active={tab === 'chat'}     label={t(lang, 'tabChat')}     icon="💬" onPress={() => setTab('chat')} />
+        <TabBtn active={tab === 'sessions'} label={t(lang, 'tabSessions')} icon="🎬" onPress={() => setTab('sessions')} />
       </View>
     </SafeAreaView>
   );
@@ -93,7 +102,7 @@ function TabBtn({ active, label, icon, onPress }) {
 }
 
 // ── Sessions ──────────────────────────────────────────────────────────────────
-function SessionsScreen({ userId }) {
+function SessionsScreen({ userId, lang }) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -102,15 +111,15 @@ function SessionsScreen({ userId }) {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try { setSessions(await api(`/users/${userId}/sessions?limit=30`)); }
-    catch { setError('שגיאה בטעינת אימונים'); }
+    catch { setError(t(lang, 'sessionsError')); }
     finally { setLoading(false); }
-  }, [userId]);
+  }, [userId, lang]);
 
   useEffect(() => { load(); }, [load]);
 
   return (
     <View style={{ flex: 1 }}>
-      <Text style={styles.screenTitle}>האימונים שלי</Text>
+      <Text style={styles.screenTitle}>{t(lang, 'sessionsTitle')}</Text>
       {!!error && <Text style={styles.error}>{error}</Text>}
       <FlatList
         data={sessions}
@@ -121,27 +130,27 @@ function SessionsScreen({ userId }) {
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.card} onPress={() => setSelected(item)}>
             <Text style={styles.cardDate}>{item.date}</Text>
-            <Text style={styles.cardStats}>{item.shots} מכות · {item.stats?.in_pct ?? '—'}% IN</Text>
-            {!!item.note?.opponent && <Text style={styles.cardOpp}>נגד: {item.note.opponent}</Text>}
+            <Text style={styles.cardStats}>{item.shots} {t(lang, 'shots')} · {item.stats?.in_pct ?? '—'}% IN</Text>
+            {!!item.note?.opponent && <Text style={styles.cardOpp}>{t(lang, 'opponent')}: {item.note.opponent}</Text>}
           </TouchableOpacity>
         )}
-        ListEmptyComponent={!loading && <Text style={styles.empty}>אין עדיין אימונים, ייבא קובץ מהאתר</Text>}
+        ListEmptyComponent={!loading && <Text style={styles.empty}>{t(lang, 'sessionsEmpty')}</Text>}
       />
       <Modal visible={!!selected} animationType="slide" transparent onRequestClose={() => setSelected(null)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalSheet}>
             <Text style={styles.screenTitle}>{selected?.date}</Text>
             <ScrollView style={{ maxHeight: 360 }}>
-              <Text style={styles.cardStats}>סך מכות: {selected?.shots ?? '—'}</Text>
-              <Text style={styles.cardStats}>ראלים: {selected?.rallies ?? '—'}</Text>
+              <Text style={styles.cardStats}>{t(lang, 'shots')}: {selected?.shots ?? '—'}</Text>
+              <Text style={styles.cardStats}>{t(lang, 'rallies')}: {selected?.rallies ?? '—'}</Text>
               {selected?.stats && Object.entries(selected.stats).map(([k, v]) => (
                 <Text key={k} style={styles.cardOpp}>{k}: {String(v)}</Text>
               ))}
-              {!!selected?.note?.opponent && <Text style={styles.cardOpp}>נגד: {selected.note.opponent}</Text>}
-              {!!selected?.note?.score && <Text style={styles.cardOpp}>תוצאה: {selected.note.score}</Text>}
+              {!!selected?.note?.opponent && <Text style={styles.cardOpp}>{t(lang, 'opponent')}: {selected.note.opponent}</Text>}
+              {!!selected?.note?.score && <Text style={styles.cardOpp}>{t(lang, 'score')}: {selected.note.score}</Text>}
             </ScrollView>
             <TouchableOpacity style={styles.button} onPress={() => setSelected(null)}>
-              <Text style={styles.buttonText}>סגור</Text>
+              <Text style={styles.buttonText}>{t(lang, 'close')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -151,7 +160,7 @@ function SessionsScreen({ userId }) {
 }
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
-function ChatScreen({ userId }) {
+function ChatScreen({ userId, lang }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -169,15 +178,15 @@ function ChatScreen({ userId }) {
       });
       setMessages([...next, { role: 'assistant', content: r.reply }]);
     } catch {
-      setMessages([...next, { role: 'assistant', content: 'שגיאה בקבלת תשובה, נסה שוב' }]);
+      setMessages([...next, { role: 'assistant', content: t(lang, 'chatError') }]);
     } finally { setSending(false); }
   };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Text style={styles.screenTitle}>המאמן הוירטואלי</Text>
+      <Text style={styles.screenTitle}>{t(lang, 'chatTitle')}</Text>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 12 }}>
-        {messages.length === 0 && <Text style={styles.empty}>שאל אותי כל דבר על האימונים שלך</Text>}
+        {messages.length === 0 && <Text style={styles.empty}>{t(lang, 'chatEmpty')}</Text>}
         {messages.map((m, i) => (
           <View key={i} style={[styles.bubble, m.role === 'user' ? styles.bubbleUser : styles.bubbleBot]}>
             <Text style={styles.bubbleText}>{m.content}</Text>
@@ -187,10 +196,10 @@ function ChatScreen({ userId }) {
       </ScrollView>
       <View style={styles.chatInputRow}>
         <TouchableOpacity style={styles.sendBtn} onPress={send} disabled={sending}>
-          <Text style={styles.sendBtnText}>שלח</Text>
+          <Text style={styles.sendBtnText}>{t(lang, 'send')}</Text>
         </TouchableOpacity>
         <TextInput
-          style={styles.chatInput} placeholder="כתוב הודעה" placeholderTextColor="#888"
+          style={styles.chatInput} placeholder={t(lang, 'chatPlaceholder')} placeholderTextColor="#888"
           value={input} onChangeText={setInput} multiline
         />
       </View>
@@ -199,7 +208,7 @@ function ChatScreen({ userId }) {
 }
 
 // ── Profile ───────────────────────────────────────────────────────────────────
-function ProfileScreen({ userId }) {
+function ProfileScreen({ userId, lang }) {
   const [profile, setProfile] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -219,28 +228,28 @@ function ProfileScreen({ userId }) {
 
   return (
     <View style={{ flex: 1 }}>
-      <Text style={styles.screenTitle}>הפרופיל שלי</Text>
+      <Text style={styles.screenTitle}>{t(lang, 'profileTitle')}</Text>
       <View style={styles.card}>
-        <Text style={styles.cardDate}>שם: {profile?.username || userId}</Text>
-        <Text style={styles.cardStats}>NTRP נוכחי: {profile?.ntrp || '—'}</Text>
-        <Text style={styles.cardStats}>NTRP יעד: {profile?.ntrp_next || '—'}</Text>
+        <Text style={styles.cardDate}>{t(lang, 'name')}: {profile?.username || userId}</Text>
+        <Text style={styles.cardStats}>{t(lang, 'ntrpCurrent')}: {profile?.ntrp || '—'}</Text>
+        <Text style={styles.cardStats}>{t(lang, 'ntrpNext')}: {profile?.ntrp_next || '—'}</Text>
       </View>
 
-      <Text style={[styles.cardOpp, { marginTop: 18, textAlign: 'right' }]}>ענף ספורט</Text>
+      <Text style={[styles.cardOpp, { marginTop: 18, textAlign: 'right' }]}>{t(lang, 'sport')}</Text>
       <View style={styles.sportRow}>
         <TouchableOpacity
           style={[styles.sportBtn, profile?.sport === 'padel' && styles.sportBtnActive]}
           onPress={() => setSport('padel')}>
-          <Text style={[styles.sportBtnText, profile?.sport === 'padel' && styles.sportBtnTextActive]}>פאדל 🎾</Text>
+          <Text style={[styles.sportBtnText, profile?.sport === 'padel' && styles.sportBtnTextActive]}>{t(lang, 'padel')} 🎾</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.sportBtn, profile?.sport === 'tennis' && styles.sportBtnActive]}
           onPress={() => setSport('tennis')}>
-          <Text style={[styles.sportBtnText, profile?.sport === 'tennis' && styles.sportBtnTextActive]}>טניס 🎾</Text>
+          <Text style={[styles.sportBtnText, profile?.sport === 'tennis' && styles.sportBtnTextActive]}>{t(lang, 'tennis')} 🎾</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.empty}>ייבוא קבצים יתווסף בקרוב</Text>
+      <Text style={styles.empty}>{t(lang, 'importSoon')}</Text>
     </View>
   );
 }
@@ -282,4 +291,7 @@ const styles = StyleSheet.create({
   sportBtnTextActive: { color: '#111' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: '#1e1e1e', borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 18, paddingBottom: 30 },
+  langBtn: { position: 'absolute', top: 50, left: 16, backgroundColor: '#1e1e1e', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12 },
+  langBtnSmall: { backgroundColor: '#1e1e1e', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
+  langBtnText: { color: '#BBFD00', fontWeight: '700', fontSize: 12 },
 });
