@@ -38,6 +38,10 @@ const DICT = {
     importOk: 'יובא בהצלחה',
     importDup: 'כבר קיים',
     importErr: 'שגיאה בייבוא, בדוק את פורמט הקובץ',
+    importLinkPlaceholder: 'הדבק לינק SwingVision',
+    importLinkBtn: 'ייבא מלינק',
+    importLinkBad: 'לינק לא תקין',
+    importOr: 'או',
     language: 'שפה',
   },
   en: {
@@ -77,6 +81,10 @@ const DICT = {
     importOk: 'Imported successfully',
     importDup: 'already existed',
     importErr: 'Import failed, check file format',
+    importLinkPlaceholder: 'Paste a SwingVision link',
+    importLinkBtn: 'Import from link',
+    importLinkBad: 'Invalid link',
+    importOr: 'or',
     language: 'Language',
   },
   es: {
@@ -116,6 +124,10 @@ const DICT = {
     importOk: 'Importado con exito',
     importDup: 'ya existia',
     importErr: 'Error al importar, revisa el formato',
+    importLinkPlaceholder: 'Pega un enlace de SwingVision',
+    importLinkBtn: 'Importar desde enlace',
+    importLinkBad: 'Enlace invalido',
+    importOr: 'o',
     language: 'Idioma',
   },
 };

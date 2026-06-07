@@ -266,6 +266,14 @@ function ProfileScreen({ userId, lang }) {
 function ImportBox({ userId, lang, onImported }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [link, setLink] = useState('');
+
+  const showResult = (r) => {
+    const imported = r.imported ?? 0;
+    const dup = r.skipped ?? r.duplicates ?? 0;
+    setMsg(`${t(lang, 'importOk')}: ${imported}${dup ? ` (${dup} ${t(lang, 'importDup')})` : ''}`);
+    onImported && onImported();
+  };
 
   const pick = async () => {
     if (busy) return;
@@ -276,20 +284,43 @@ function ImportBox({ userId, lang, onImported }) {
     setBusy(true);
     setMsg(t(lang, 'importing'));
     try {
-      const r = await uploadFile(userId, file);
-      const imported = r.imported ?? 0;
-      const dup = r.skipped ?? r.duplicates ?? 0;
-      setMsg(`${t(lang, 'importOk')}: ${imported}${dup ? ` (${dup} ${t(lang, 'importDup')})` : ''}`);
-      onImported && onImported();
+      showResult(await uploadFile(userId, file));
     } catch {
       setMsg(t(lang, 'importErr'));
+    } finally { setBusy(false); }
+  };
+
+  const importFromLink = async () => {
+    const url = link.trim();
+    if (!url || busy) return;
+    setBusy(true);
+    setMsg(t(lang, 'importing'));
+    try {
+      const r = await api(`/users/${userId}/import_link`, { method: 'POST', body: JSON.stringify({ url }) });
+      setLink('');
+      showResult(r);
+    } catch {
+      setMsg(t(lang, 'importLinkBad'));
     } finally { setBusy(false); }
   };
 
   return (
     <View style={{ marginTop: 18 }}>
       <Text style={[styles.cardOpp, { textAlign: 'right' }]}>{t(lang, 'importTitle')}</Text>
-      <TouchableOpacity style={[styles.button, { marginTop: 8 }]} onPress={pick} disabled={busy}>
+
+      <View style={styles.linkRow}>
+        <TouchableOpacity style={styles.sendBtn} onPress={importFromLink} disabled={busy || !link.trim()}>
+          <Text style={styles.sendBtnText}>{t(lang, 'importLinkBtn')}</Text>
+        </TouchableOpacity>
+        <TextInput
+          style={styles.chatInput} placeholder={t(lang, 'importLinkPlaceholder')} placeholderTextColor="#888"
+          value={link} onChangeText={setLink} autoCapitalize="none"
+        />
+      </View>
+
+      <Text style={[styles.empty, { marginTop: 6, marginBottom: 2 }]}>{t(lang, 'importOr')}</Text>
+
+      <TouchableOpacity style={styles.button} onPress={pick} disabled={busy}>
         {busy ? <ActivityIndicator color="#111" /> : <Text style={styles.buttonText}>{t(lang, 'importPick')}</Text>}
       </TouchableOpacity>
       {!!msg && <Text style={styles.cardOpp}>{msg}</Text>}
@@ -337,4 +368,5 @@ const styles = StyleSheet.create({
   langBtn: { position: 'absolute', top: 50, left: 16, backgroundColor: '#1e1e1e', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12 },
   langBtnSmall: { backgroundColor: '#1e1e1e', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
   langBtnText: { color: '#BBFD00', fontWeight: '700', fontSize: 12 },
+  linkRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginTop: 8 },
 });

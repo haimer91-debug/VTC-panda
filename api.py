@@ -15,7 +15,7 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from coach import db, config, claude_client, swingvision_parser as svp
+from coach import db, config, claude_client, swingvision, swingvision_parser as svp
 
 app = FastAPI(title="Virtual Coach API", version="0.1")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -138,6 +138,27 @@ async def import_file(uid: str, file: UploadFile = File(...)):
             os.unlink(tmp_path)
         except Exception:
             pass
+
+
+class LinkIn(BaseModel):
+    url: str
+
+
+@app.post("/users/{uid}/import_link")
+def import_link(uid: str, body: LinkIn):
+    link = (body.url or "").strip()
+    mid = swingvision.extract_match_id(link)
+    if not mid:
+        raise HTTPException(422, "invalid SwingVision link")
+    if db.session_exists(mid, user_id=uid):
+        return {"imported": 0, "skipped": 1, "match_id": mid}
+    try:
+        s = swingvision.parse_session(mid)
+        db.save_session(s["match_id"], s["date"], s["shots"], s["rallies"],
+                        s, s.get("video_url"), user_id=uid)
+        return {"imported": 1, "skipped": 0, "match_id": s["match_id"], "shots": s["shots"]}
+    except Exception as e:
+        raise HTTPException(422, f"import failed: {e}")
 
 
 # ── Chat (streaming would need SSE/WebSocket — kept simple/blocking for v0) ──
