@@ -5,6 +5,7 @@ import {
   ScrollView, KeyboardAvoidingView, Platform, Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as DocumentPicker from 'expo-document-picker';
 import { API_URL } from './config';
 import { t, LANGS } from './i18n';
 
@@ -16,6 +17,14 @@ async function api(path, opts = {}) {
     headers: { 'Content-Type': 'application/json' },
     ...opts,
   });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+async function uploadFile(userId, file) {
+  const form = new FormData();
+  form.append('file', { uri: file.uri, name: file.name, type: file.mimeType || 'application/octet-stream' });
+  const r = await fetch(`${API_URL}/users/${userId}/import`, { method: 'POST', body: form });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
 }
@@ -249,7 +258,41 @@ function ProfileScreen({ userId, lang }) {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.empty}>{t(lang, 'importSoon')}</Text>
+      <ImportBox userId={userId} lang={lang} onImported={load} />
+    </View>
+  );
+}
+
+function ImportBox({ userId, lang, onImported }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const pick = async () => {
+    if (busy) return;
+    setMsg('');
+    const res = await DocumentPicker.getDocumentAsync({ multiple: false, copyToCacheDirectory: true });
+    if (res.canceled || !res.assets?.length) return;
+    const file = res.assets[0];
+    setBusy(true);
+    setMsg(t(lang, 'importing'));
+    try {
+      const r = await uploadFile(userId, file);
+      const imported = r.imported ?? 0;
+      const dup = r.skipped ?? r.duplicates ?? 0;
+      setMsg(`${t(lang, 'importOk')}: ${imported}${dup ? ` (${dup} ${t(lang, 'importDup')})` : ''}`);
+      onImported && onImported();
+    } catch {
+      setMsg(t(lang, 'importErr'));
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <View style={{ marginTop: 18 }}>
+      <Text style={[styles.cardOpp, { textAlign: 'right' }]}>{t(lang, 'importTitle')}</Text>
+      <TouchableOpacity style={[styles.button, { marginTop: 8 }]} onPress={pick} disabled={busy}>
+        {busy ? <ActivityIndicator color="#111" /> : <Text style={styles.buttonText}>{t(lang, 'importPick')}</Text>}
+      </TouchableOpacity>
+      {!!msg && <Text style={styles.cardOpp}>{msg}</Text>}
     </View>
   );
 }
