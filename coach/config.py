@@ -139,6 +139,15 @@ def get_ntrp_assessment(user_id: str | None = None) -> dict:
     return {"ntrp": d.get("ntrp_level", ""), "text": d.get("ntrp_text", ""), "date": d.get("ntrp_date", "")}
 
 
+def get_sport(user_id: str | None = None) -> str:
+    return _user_data(user_id).get("sport", "tennis")
+
+
+def save_sport(sport: str, user_id: str | None = None) -> None:
+    if sport in ("tennis", "padel"):
+        _save_user({"sport": sport}, user_id)
+
+
 def get_pro(user_id: str | None = None) -> str:
     return _user_data(user_id).get("pro_player", "")
 

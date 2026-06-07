@@ -58,7 +58,7 @@ def get_profile(uid: str):
         "username": config.get_username(uid),
         "ntrp": config.get_ntrp(uid),
         "ntrp_next": config.get_ntrp_next(uid),
-        "sport": config.get_pro(uid) and "tennis" or "tennis",  # placeholder until sport pref added
+        "sport": config.get_sport(uid),
     }
 
 
@@ -71,7 +71,8 @@ class ProfileIn(BaseModel):
 def update_profile(uid: str, body: ProfileIn):
     if body.username:
         config.save_username(body.username.strip(), uid)
-    # sport preference: stored via config (extend config.py with get/save_sport if needed)
+    if body.sport:
+        config.save_sport(body.sport.strip().lower(), uid)
     return {"ok": True}
 
 
