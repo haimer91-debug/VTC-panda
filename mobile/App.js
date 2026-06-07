@@ -181,6 +181,7 @@ function ChatScreen({ userId, lang }) {
   const [showHistory, setShowHistory] = useState(false);
   const [convos, setConvos] = useState([]);
   const [savedMsg, setSavedMsg] = useState('');
+  const [convoId, setConvoId] = useState(null);
   const scrollRef = useRef(null);
 
   const scrollEnd = () => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
@@ -203,17 +204,28 @@ function ChatScreen({ userId, lang }) {
     } finally { setSending(false); scrollEnd(); }
   };
 
-  const saveAndNew = async () => {
-    if (!messages.length) { setMessages([]); return; }
+  const saveChat = async () => {
+    if (!messages.length) return;
     try {
-      await api(`/users/${userId}/conversations`, {
-        method: 'POST', body: JSON.stringify({ messages }),
-      });
+      if (convoId) {
+        await api(`/users/${userId}/conversations/${convoId}`, {
+          method: 'PUT', body: JSON.stringify({ messages }),
+        });
+      } else {
+        const r = await api(`/users/${userId}/conversations`, {
+          method: 'POST', body: JSON.stringify({ messages }),
+        });
+        if (r.id) setConvoId(r.id);
+      }
       setSavedMsg(t(lang, 'chatSaved'));
       setTimeout(() => setSavedMsg(''), 2000);
-    } catch {}
-    setMessages([]);
+    } catch {
+      setSavedMsg(t(lang, 'chatError'));
+      setTimeout(() => setSavedMsg(''), 2000);
+    }
   };
+
+  const newChat = () => { setMessages([]); setConvoId(null); };
 
   const openHistory = async () => {
     setShowHistory(true);
@@ -224,6 +236,7 @@ function ChatScreen({ userId, lang }) {
     try {
       const c = await api(`/users/${userId}/conversations/${id}`);
       setMessages(c.messages || []);
+      setConvoId(id);
       setShowHistory(false);
       scrollEnd();
     } catch {}
@@ -231,10 +244,13 @@ function ChatScreen({ userId, lang }) {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={90}>
+      <Text style={styles.screenTitle}>{t(lang, 'chatTitle')}</Text>
       <View style={styles.chatTopRow}>
         <TouchableOpacity onPress={openHistory}><Text style={styles.linkAction}>{t(lang, 'chatHistory')}</Text></TouchableOpacity>
-        <Text style={styles.screenTitle}>{t(lang, 'chatTitle')}</Text>
-        <TouchableOpacity onPress={saveAndNew}><Text style={styles.linkAction}>{t(lang, 'chatNew')}</Text></TouchableOpacity>
+        <TouchableOpacity onPress={saveChat} disabled={!messages.length}>
+          <Text style={[styles.linkAction, !messages.length && { opacity: 0.4 }]}>{t(lang, 'chatSave')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={newChat}><Text style={styles.linkAction}>{t(lang, 'chatNew')}</Text></TouchableOpacity>
       </View>
       {!!savedMsg && <Text style={[styles.cardOpp, { textAlign: 'center' }]}>{savedMsg}</Text>}
       <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 12 }}>
@@ -435,6 +451,6 @@ const styles = StyleSheet.create({
   langBtnSmall: { backgroundColor: '#1e1e1e', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
   langBtnText: { color: '#BBFD00', fontWeight: '700', fontSize: 12 },
   linkRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginTop: 8 },
-  chatTopRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
+  chatTopRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, gap: 14 },
   linkAction: { color: '#BBFD00', fontSize: 13, fontWeight: '700' },
 });

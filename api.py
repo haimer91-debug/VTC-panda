@@ -199,7 +199,19 @@ def save_conversation(uid: str, body: ConversationIn):
         raise HTTPException(400, "no messages")
     title = (body.title or "").strip() or datetime.now().strftime("%Y-%m-%d %H:%M")
     db.save_history("chat", title, "", _json.dumps(body.messages, ensure_ascii=False), user_id=uid)
-    return {"ok": True, "title": title}
+    rows = db.get_history(category="chat", limit=50, user_id=uid)
+    row = next((r for r in rows if r["title"] == title), None)
+    return {"ok": True, "title": title, "id": row["id"] if row else None}
+
+
+@app.put("/users/{uid}/conversations/{conv_id}")
+def update_conversation(uid: str, conv_id: int, body: ConversationIn):
+    rows = db.get_history(category="chat", limit=200, user_id=uid)
+    row = next((r for r in rows if r["id"] == conv_id), None)
+    if not row:
+        raise HTTPException(404, "not found")
+    db.save_history("chat", row["title"], "", _json.dumps(body.messages, ensure_ascii=False), user_id=uid)
+    return {"ok": True, "id": conv_id}
 
 
 @app.get("/users/{uid}/conversations/{conv_id}")
