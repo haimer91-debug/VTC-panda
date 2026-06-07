@@ -241,7 +241,7 @@ function ChatScreen({ userId, lang }) {
         {messages.length === 0 && <Text style={styles.empty}>{t(lang, 'chatEmpty')}</Text>}
         {messages.map((m, i) => (
           <View key={i} style={[styles.bubble, m.role === 'user' ? styles.bubbleUser : styles.bubbleBot]}>
-            <Text style={styles.bubbleText}>{m.content}</Text>
+            <Text style={[styles.bubbleText, m.role === 'user' ? styles.bubbleTextUser : styles.bubbleTextBot]}>{m.content}</Text>
           </View>
         ))}
         {sending && <ActivityIndicator color="#BBFD00" style={{ marginTop: 8 }} />}
@@ -417,7 +417,9 @@ const styles = StyleSheet.create({
   bubble: { borderRadius: 12, padding: 12, marginTop: 8, maxWidth: '85%' },
   bubbleUser: { backgroundColor: '#BBFD00', alignSelf: 'flex-end' },
   bubbleBot: { backgroundColor: '#1e1e1e', alignSelf: 'flex-start' },
-  bubbleText: { color: '#111', textAlign: 'right' },
+  bubbleText: { textAlign: 'right' },
+  bubbleTextUser: { color: '#111' },
+  bubbleTextBot: { color: '#fff' },
   chatInputRow: { flexDirection: 'row-reverse', alignItems: 'flex-end', paddingTop: 8, gap: 8 },
   chatInput: { flex: 1, backgroundColor: '#1e1e1e', color: '#fff', borderRadius: 10, padding: 12, textAlign: 'right', maxHeight: 100 },
   sendBtn: { backgroundColor: '#BBFD00', borderRadius: 10, paddingVertical: 12, paddingHorizontal: 18 },
