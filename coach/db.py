@@ -209,6 +209,14 @@ def init() -> None:
 
         # Make sure dependent tables exist + carry user_id (created lazily
         # elsewhere too, but creating here lets us migrate them up front).
+        # Global cache of parsed SwingVision matches, shared across all users —
+        # avoids re-fetching the same public match from the SwingVision API
+        # when more than one player imports the same link.
+        c.execute("""CREATE TABLE IF NOT EXISTS match_cache
+                     (match_id TEXT PRIMARY KEY, date TEXT, shots INTEGER,
+                      rallies INTEGER, stats_json TEXT, video_url TEXT,
+                      cached_at TEXT DEFAULT (datetime('now')))""")
+
         c.execute("""CREATE TABLE IF NOT EXISTS analyses
                      (key TEXT PRIMARY KEY, text TEXT, created_at TEXT,
                       user_id TEXT NOT NULL DEFAULT 'haim')""")
@@ -246,6 +254,34 @@ def save_session(match_id: str, date: str, shots: int, rallies: int,
             "video_url=COALESCE(excluded.video_url, sessions.video_url)",
             (match_id, date, shots, rallies,
              json.dumps(stats, ensure_ascii=False), video_url, uid)
+        )
+
+
+def get_cached_match(match_id: str) -> dict | None:
+    """Look up a previously-fetched SwingVision match, regardless of which
+    user imported it first — lets us skip calling their API again."""
+    with _conn() as c:
+        r = c.execute(
+            "SELECT * FROM match_cache WHERE match_id=?", (match_id,)
+        ).fetchone()
+    if not r:
+        return None
+    d = dict(r)
+    d["stats"] = json.loads(d.pop("stats_json") or "{}")
+    return d
+
+
+def save_cached_match(match_id: str, date: str, shots: int, rallies: int,
+                       stats: dict, video_url: str | None = None) -> None:
+    with _conn() as c:
+        c.execute(
+            "INSERT INTO match_cache (match_id, date, shots, rallies, stats_json, video_url) "
+            "VALUES (?,?,?,?,?,?) "
+            "ON CONFLICT(match_id) DO UPDATE SET "
+            "shots=excluded.shots, rallies=excluded.rallies, "
+            "stats_json=excluded.stats_json, "
+            "video_url=COALESCE(excluded.video_url, match_cache.video_url)",
+            (match_id, date, shots, rallies, json.dumps(stats, ensure_ascii=False), video_url)
         )
 
 

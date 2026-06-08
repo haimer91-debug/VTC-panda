@@ -154,7 +154,13 @@ def import_link(uid: str, body: LinkIn):
     if db.session_exists(mid, user_id=uid):
         return {"imported": 0, "skipped": 1, "match_id": mid}
     try:
-        s = swingvision.parse_session(mid)
+        cached = db.get_cached_match(mid)
+        if cached:
+            s = cached
+        else:
+            s = swingvision.parse_session(mid)
+            db.save_cached_match(s["match_id"], s["date"], s["shots"], s["rallies"],
+                                 s, s.get("video_url"))
         db.save_session(s["match_id"], s["date"], s["shots"], s["rallies"],
                         s, s.get("video_url"), user_id=uid)
         return {"imported": 1, "skipped": 0, "match_id": s["match_id"], "shots": s["shots"]}
