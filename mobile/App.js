@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
-  FlatList, ActivityIndicator, I18nManager, SafeAreaView,
+  FlatList, ActivityIndicator, I18nManager,
   ScrollView, KeyboardAvoidingView, Platform, Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { API_URL } from './config';
 import { t, LANGS } from './i18n';
@@ -29,7 +30,7 @@ async function uploadFile(userId, file) {
   return r.json();
 }
 
-export default function App() {
+function AppInner() {
   const [userId, setUserId] = useState(null);
   const [username, setUsername] = useState('');
   const [tab, setTab] = useState('sessions');
@@ -98,6 +99,14 @@ export default function App() {
         <TabBtn active={tab === 'sessions'} label={t(lang, 'tabSessions')} icon="🎬" onPress={() => setTab('sessions')} />
       </View>
     </SafeAreaView>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AppInner />
+    </SafeAreaProvider>
   );
 }
 
