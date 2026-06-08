@@ -7,6 +7,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
+import Constants from 'expo-constants';
 import { API_URL } from './config';
 import { t, LANGS } from './i18n';
 
@@ -356,6 +357,10 @@ function ProfileScreen({ userId, lang }) {
       </View>
 
       <ImportBox userId={userId} lang={lang} onImported={load} />
+
+      <Text style={styles.versionText}>
+        {t(lang, 'appName')} · v{Constants.expoConfig?.version || '1.0.0'}
+      </Text>
     </ScrollView>
   );
 }
@@ -440,6 +445,7 @@ const styles = StyleSheet.create({
   cardStats: { color: '#fff', marginTop: 6, textAlign: 'right' },
   cardOpp: { color: '#aaa', marginTop: 4, textAlign: 'right' },
   empty: { color: '#888', textAlign: 'center', marginTop: 30 },
+  versionText: { color: '#555', textAlign: 'center', marginTop: 24, marginBottom: 12, fontSize: 12 },
   topBar: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10 },
   topTitle: { color: '#fff', fontWeight: '900', fontSize: 17 },
   logout: { color: '#ff6b6b', fontSize: 14 },
