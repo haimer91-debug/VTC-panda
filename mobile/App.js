@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   FlatList, ActivityIndicator, I18nManager,
-  ScrollView, KeyboardAvoidingView, Platform, Modal,
+  ScrollView, KeyboardAvoidingView, Platform, Modal, RefreshControl,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -309,11 +309,17 @@ function ChatScreen({ userId, lang }) {
 function ProfileScreen({ userId, lang }) {
   const [profile, setProfile] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(() => {
-    api(`/users/${userId}/profile`).then(setProfile).catch(() => {});
+    return api(`/users/${userId}/profile`).then(setProfile).catch(() => {});
   }, [userId]);
   useEffect(() => { load(); }, [load]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    load().finally(() => setRefreshing(false));
+  }, [load]);
 
   const setSport = async (sport) => {
     if (saving || profile?.sport === sport) return;
@@ -325,7 +331,9 @@ function ProfileScreen({ userId, lang }) {
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <ScrollView
+      style={{ flex: 1 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#BBFD00" />}>
       <Text style={styles.screenTitle}>{t(lang, 'profileTitle')}</Text>
       <View style={styles.card}>
         <Text style={styles.cardDate}>{t(lang, 'name')}: {profile?.username || userId}</Text>
@@ -348,7 +356,7 @@ function ProfileScreen({ userId, lang }) {
       </View>
 
       <ImportBox userId={userId} lang={lang} onImported={load} />
-    </View>
+    </ScrollView>
   );
 }
 
