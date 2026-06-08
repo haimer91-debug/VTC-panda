@@ -1,6 +1,7 @@
 """SwingVision API — login, fetch, parse. Token cached in memory."""
 from __future__ import annotations
 import math
+import os
 import re
 import uuid as _uuid
 from collections import Counter, defaultdict
@@ -26,13 +27,27 @@ def _headers() -> dict:
     }
 
 
+def _load_creds() -> tuple[str, str]:
+    """Credentials from environment variables first (works on Render),
+    falling back to a local swingvision_creds.txt file (works locally)."""
+    user = os.environ.get("SWINGVISION_USERNAME")
+    pwd = os.environ.get("SWINGVISION_PASSWORD")
+    if user and pwd:
+        return user, pwd
+    if not CREDS.exists():
+        raise FileNotFoundError(
+            "SwingVision credentials missing — set SWINGVISION_USERNAME and "
+            "SWINGVISION_PASSWORD environment variables, or create swingvision_creds.txt"
+        )
+    lines = CREDS.read_text(encoding="utf-8").strip().splitlines()
+    return lines[0], lines[1]
+
+
 def login() -> dict:
     global _auth
-    if not CREDS.exists():
-        raise FileNotFoundError("swingvision_creds.txt missing")
-    lines = CREDS.read_text(encoding="utf-8").strip().splitlines()
+    username, password = _load_creds()
     r = requests.post(f"{API}/login",
-                      json={"username": lines[0], "password": lines[1]},
+                      json={"username": username, "password": password},
                       headers={"Accept": "application/json",
                                 "Content-Type": "application/json"},
                       timeout=15)
